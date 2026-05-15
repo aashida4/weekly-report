@@ -1,4 +1,9 @@
-type TaskLite = { title: string; details: string; completed: boolean };
+type TaskLite = {
+  title: string;
+  details: string;
+  completed: boolean;
+  completedAt?: string | null;
+};
 type ReflectionLite = { good: string; bad: string; consult: string };
 type WeekSummary = { isoYear: number; isoWeek: number; total: number; done: number };
 
@@ -11,7 +16,13 @@ function fmtTasks(tasks: TaskLite[]): string {
     .map((t, i) => {
       const detail = t.details.trim().slice(0, 280);
       const status = t.completed ? "[x]" : "[ ]";
-      return `${i + 1}. ${status} ${t.title}${detail ? `\n   詳細: ${detail.replace(/\n/g, " ")}` : ""}`;
+      const doneAt =
+        t.completed && t.completedAt
+          ? ` (完了: ${new Date(t.completedAt).toISOString().slice(0, 16).replace("T", " ")})`
+          : "";
+      return `${i + 1}. ${status} ${t.title}${doneAt}${
+        detail ? `\n   詳細: ${detail.replace(/\n/g, " ")}` : ""
+      }`;
     })
     .join("\n");
 }

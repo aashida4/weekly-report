@@ -1,6 +1,12 @@
 import MarkdownView from "./MarkdownView";
 
-type Task = { id: string; title: string; details: string; completed: boolean };
+type Task = {
+  id: string;
+  title: string;
+  details: string;
+  completed: boolean;
+  completedAt: string | null;
+};
 type Reflection = { good: string; bad: string; consult: string } | null;
 type Feedback = {
   id: string;
@@ -45,6 +51,11 @@ export default function WeekViewReadOnly({
                   >
                     {t.title}
                   </span>
+                  {t.completed && t.completedAt && (
+                    <span className="text-xs text-emerald-700">
+                      ✓ {new Date(t.completedAt).toLocaleString()}
+                    </span>
+                  )}
                 </div>
                 {t.details && (
                   <div className="mt-2 border-t border-slate-100 pt-2">

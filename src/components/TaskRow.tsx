@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import MarkdownEditor from "./MarkdownEditor";
-import { updateTask, deleteTask } from "@/lib/actions/tasks";
+import { assignTaskToWeek, deleteTask, updateTask } from "@/lib/actions/tasks";
 
 type Props = {
   task: {
@@ -10,13 +11,28 @@ type Props = {
     title: string;
     details: string;
     completed: boolean;
+    completedAt: string | null;
+    week: { isoYear: number; isoWeek: number } | null;
   };
+  context: "dashboard" | "week";
+  currentWeekId?: string;
+  weekOptions?: { id: string; label: string }[];
 };
 
-export default function TaskRow({ task }: Props) {
+function formatCompletedAt(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(
+    d.getDate(),
+  ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(
+    d.getMinutes(),
+  ).padStart(2, "0")}`;
+}
+
+export default function TaskRow({ task, context, currentWeekId, weekOptions }: Props) {
   const [title, setTitle] = useState(task.title);
   const [details, setDetails] = useState(task.details);
   const [completed, setCompleted] = useState(task.completed);
+  const [completedAt, setCompletedAt] = useState(task.completedAt);
   const [open, setOpen] = useState(false);
   const [, startTransition] = useTransition();
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -29,6 +45,7 @@ export default function TaskRow({ task }: Props) {
   function toggle() {
     const next = !completed;
     setCompleted(next);
+    setCompletedAt(next ? (completedAt ?? new Date().toISOString()) : null);
     startTransition(async () => {
       await updateTask({ taskId: task.id, completed: next });
       flash();
@@ -58,6 +75,21 @@ export default function TaskRow({ task }: Props) {
     });
   }
 
+  function onAssign(newWeekId: string) {
+    startTransition(async () => {
+      await assignTaskToWeek({
+        taskId: task.id,
+        weekId: newWeekId === "__pool__" ? null : newWeekId,
+      });
+    });
+  }
+
+  function onUnassign() {
+    startTransition(async () => {
+      await assignTaskToWeek({ taskId: task.id, weekId: null });
+    });
+  }
+
   return (
     <li className="rounded-md border border-slate-200 bg-white">
       <div className="flex items-center gap-3 px-3 py-2">
@@ -71,12 +103,64 @@ export default function TaskRow({ task }: Props) {
             completed ? "text-slate-400 line-through" : ""
           }`}
         />
+        {completed && completedAt && (
+          <span
+            className="text-xs text-emerald-700"
+            title={`完了: ${new Date(completedAt).toLocaleString()}`}
+          >
+            ✓ {formatCompletedAt(completedAt)}
+          </span>
+        )}
+        {context === "dashboard" && (
+          <>
+            {task.week ? (
+              <Link
+                href={`/weeks/${task.week.isoYear}/${task.week.isoWeek}`}
+                className="rounded-md bg-slate-100 px-2 py-0.5 text-xs no-underline text-slate-700"
+              >
+                {task.week.isoYear}-W{String(task.week.isoWeek).padStart(2, "0")}
+              </Link>
+            ) : (
+              <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+                プール
+              </span>
+            )}
+            {weekOptions && weekOptions.length > 0 && (
+              <select
+                value={task.week ? "" : "__pool__"}
+                onChange={(e) => {
+                  if (e.target.value) onAssign(e.target.value);
+                }}
+                className="rounded-md border border-slate-300 px-1 py-0.5 text-xs"
+              >
+                <option value="">移動…</option>
+                <option value="__pool__">プールへ</option>
+                {weekOptions.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    → {w.label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </>
+        )}
+        {context === "week" && currentWeekId === undefined && null}
+        {context === "week" && (
+          <button
+            type="button"
+            onClick={onUnassign}
+            title="プールに戻す"
+            className="text-xs text-slate-500 hover:text-slate-800"
+          >
+            プールへ
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           className="text-xs text-slate-600 hover:text-slate-900"
         >
-          {open ? "▲ 閉じる" : "▼ 詳細"}
+          {open ? "▲" : "▼"} 詳細
         </button>
         <button
           type="button"

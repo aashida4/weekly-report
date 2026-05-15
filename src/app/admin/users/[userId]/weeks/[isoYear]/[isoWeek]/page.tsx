@@ -50,6 +50,7 @@ export default async function AdminWeekPage({
           title: t.title,
           details: t.details,
           completed: t.completed,
+          completedAt: t.completedAt ? t.completedAt.toISOString() : null,
         }))}
         reflection={
           week.reflection

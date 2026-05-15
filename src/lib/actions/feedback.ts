@@ -33,6 +33,7 @@ export async function generateFeedback({
       title: t.title,
       details: t.details,
       completed: t.completed,
+      completedAt: t.completedAt ? t.completedAt.toISOString() : null,
     }));
     const reflection = {
       good: week.reflection?.good ?? "",

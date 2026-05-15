@@ -26,10 +26,15 @@ export default async function WeekPage({
   const user = await requireUser();
   const week = await getOrCreateWeek(user.id, { isoYear, isoWeek });
 
-  const [tasks, reflection, feedbacks] = await Promise.all([
+  const [tasks, poolTasks, reflection, feedbacks] = await Promise.all([
     prisma.task.findMany({
-      where: { weekId: week.id },
+      where: { userId: user.id, weekId: week.id, archived: false },
       orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.task.findMany({
+      where: { userId: user.id, weekId: null, archived: false, completed: false },
+      orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+      select: { id: true, title: true },
     }),
     prisma.reflection.findUnique({ where: { weekId: week.id } }),
     prisma.feedback.findMany({
@@ -66,6 +71,12 @@ export default async function WeekPage({
             一覧
           </Link>
           <Link
+            href="/dashboard"
+            className="rounded-md border border-slate-300 px-3 py-1 no-underline text-slate-700 hover:bg-slate-100"
+          >
+            全タスク
+          </Link>
+          <Link
             href={`/weeks/${next.isoYear}/${next.isoWeek}`}
             className="rounded-md border border-slate-300 px-3 py-1 no-underline text-slate-700 hover:bg-slate-100"
           >
@@ -77,13 +88,18 @@ export default async function WeekPage({
       <section>
         <h2 className="mb-3 text-lg font-semibold">今週のタスク</h2>
         <TaskList
+          context="week"
           weekId={week.id}
+          defaultWeekId={week.id}
           tasks={tasks.map((t) => ({
             id: t.id,
             title: t.title,
             details: t.details,
             completed: t.completed,
+            completedAt: t.completedAt ? t.completedAt.toISOString() : null,
+            week: { isoYear, isoWeek },
           }))}
+          poolTasks={poolTasks}
         />
       </section>
 
