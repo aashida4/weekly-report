@@ -18,7 +18,10 @@ export const authConfig = {
         url.searchParams.set("next", pathname);
         return Response.redirect(url);
       }
-      if (isAuthPage && isAuthed) {
+      // Don't bounce an authed user away from /login when an error qualifier
+      // is present (e.g. ?error=stale means their JWT references a deleted user
+      // — they need to actually re-login).
+      if (isAuthPage && isAuthed && !nextUrl.searchParams.has("error")) {
         return Response.redirect(new URL("/dashboard", nextUrl));
       }
       return true;

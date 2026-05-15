@@ -35,10 +35,14 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```bash
 npm install
 cp .env.example .env
-npx prisma db push
-npx prisma db seed
+npx prisma db push        # SQLite を prisma/dev.db に作成
+npx prisma db seed        # 初期ユーザー投入
 npm run dev
 ```
+
+> **DB を作り直したとき** は古いブラウザの認証 Cookie が無効になります。アプリ側で
+> 自動的に検知し、`/login?error=stale` にリダイレクトして再ログインを促します。
+> Cookie を手動で消す場合は DevTools → Application → Cookies → `authjs.*` を削除。
 
 ## LLM 連携（Ollama / OpenAI 切替可）
 `.env` の `LLM_PROVIDER` で `ollama` か `openai` を選択します。
@@ -73,7 +77,7 @@ npm run dev
 ## 環境変数
 | 変数 | 用途 |
 |---|---|
-| `DATABASE_URL` | SQLite ファイルパス。Docker では `file:/data/app.db` |
+| `DATABASE_URL` | SQLite ファイルパス。Prisma は `file:` の相対パスを `prisma/schema.prisma` の場所基準で解決します。ローカルは `file:./dev.db` (→ `prisma/dev.db`)、Docker では絶対パス `file:/data/app.db`。 |
 | `AUTH_SECRET` | Auth.js JWT 署名キー（`openssl rand -base64 32`） |
 | `AUTH_TRUST_HOST` | Auth.js: リバースプロキシ配下で `true` |
 | `LLM_PROVIDER` | `ollama` (既定) または `openai` |

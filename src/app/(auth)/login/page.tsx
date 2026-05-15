@@ -28,7 +28,12 @@ export default async function LoginPage({
   return (
     <div className="mx-auto max-w-sm">
       <h1 className="text-2xl font-semibold">Login</h1>
-      {error && (
+      {error === "stale" && (
+        <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          セッションが無効になりました（ユーザーが見つかりません）。再度ログインしてください。
+        </p>
+      )}
+      {error && error !== "stale" && (
         <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
           メールアドレスまたはパスワードが違います。
         </p>

@@ -52,8 +52,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
 export async function requireUser() {
   const session = await auth();
-  if (!session?.user) redirect("/login");
-  return session.user;
+  if (!session?.user?.id) redirect("/login");
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, email: true, name: true, role: true },
+  });
+  if (!dbUser) {
+    // Stale JWT (user was deleted or DB was reset). Clear cookie and force re-login.
+    await signOut({ redirect: false }).catch(() => undefined);
+    redirect("/login?error=stale");
+  }
+  return {
+    id: dbUser.id,
+    email: dbUser.email,
+    name: dbUser.name ?? undefined,
+    role: dbUser.role as "student" | "admin",
+  };
 }
 
 export async function requireAdmin() {
