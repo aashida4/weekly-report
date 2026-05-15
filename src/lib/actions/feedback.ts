@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
-import { callOllama } from "@/lib/ollama";
+import { callLLM } from "@/lib/llm";
 import { buildGoalSettingPrompt, buildProgressPrompt } from "@/lib/prompts";
 import { shiftIsoWeek } from "@/lib/week";
 
@@ -82,7 +82,7 @@ export async function generateFeedback({
       });
     }
 
-    const { content, model } = await callOllama(payload);
+    const { content, model } = await callLLM(payload);
     await prisma.feedback.create({
       data: {
         weekId,
