@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+a {
+  @apply text-brand hover:text-brand-dark;
+}
+
+/* MD editor light theme tweaks */
+.w-md-editor {
+  @apply shadow-none border border-slate-300 rounded-md;
+}

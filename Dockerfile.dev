@@ -1,0 +1,9 @@
+FROM node:20-alpine
+RUN apk add --no-cache libc6-compat openssl
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+RUN mkdir -p /data
+EXPOSE 3000
+CMD ["sh", "-c", "npm install && npx prisma generate && npx prisma db push && npm run dev -- -H 0.0.0.0"]
