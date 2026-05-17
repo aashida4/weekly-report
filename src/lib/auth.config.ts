@@ -8,7 +8,7 @@ export const authConfig = {
     authorized({ auth, request: { nextUrl } }) {
       const isAuthed = !!auth?.user;
       const pathname = nextUrl.pathname;
-      const isAuthPage = pathname === "/login" || pathname === "/signup";
+      const isLoginPage = pathname === "/login";
       const isProtected =
         pathname.startsWith("/dashboard") ||
         pathname.startsWith("/weeks") ||
@@ -18,10 +18,10 @@ export const authConfig = {
         url.searchParams.set("next", pathname);
         return Response.redirect(url);
       }
-      // Don't bounce an authed user away from /login when an error qualifier
-      // is present (e.g. ?error=stale means their JWT references a deleted user
-      // — they need to actually re-login).
-      if (isAuthPage && isAuthed && !nextUrl.searchParams.has("error")) {
+      // Only bounce authed users away from /login (not /signup) — and not when
+      // ?error= is set, since a stale JWT user needs to actually re-login.
+      // /signup is always reachable so a stale-cookie user can create an account.
+      if (isLoginPage && isAuthed && !nextUrl.searchParams.has("error")) {
         return Response.redirect(new URL("/dashboard", nextUrl));
       }
       return true;
