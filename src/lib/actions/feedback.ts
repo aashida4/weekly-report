@@ -4,10 +4,16 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { callLLM } from "@/lib/llm";
-import { buildGoalSettingPrompt, buildProgressPrompt } from "@/lib/prompts";
-import { shiftIsoWeek } from "@/lib/week";
+import {
+  buildGoalSettingPrompt,
+  buildProgressPrompt,
+  type WeekContext,
+} from "@/lib/prompts";
 
 type Kind = "progress" | "goal_setting";
+
+const HISTORY_WEEKS = 3;
+const PREV_ADVICE_CHARS = 600;
 
 async function loadWeekForUser(weekId: string) {
   const user = await requireUser();
@@ -17,6 +23,51 @@ async function loadWeekForUser(weekId: string) {
   });
   if (!week || week.userId !== user.id) throw new Error("Not found");
   return { user, week };
+}
+
+async function loadHistory(
+  userId: string,
+  current: { isoYear: number; isoWeek: number },
+): Promise<WeekContext[]> {
+  const past = await prisma.week.findMany({
+    where: {
+      userId,
+      OR: [
+        { isoYear: { lt: current.isoYear } },
+        { isoYear: current.isoYear, isoWeek: { lt: current.isoWeek } },
+      ],
+    },
+    orderBy: [{ isoYear: "desc" }, { isoWeek: "desc" }],
+    take: HISTORY_WEEKS,
+    include: {
+      tasks: { orderBy: { order: "asc" } },
+      reflection: true,
+      feedbacks: { orderBy: { createdAt: "desc" } },
+    },
+  });
+  // chronological (old → new)
+  past.reverse();
+  return past.map((w) => {
+    const progress = w.feedbacks.find((f) => f.kind === "progress");
+    const goal = w.feedbacks.find((f) => f.kind === "goal_setting");
+    return {
+      isoYear: w.isoYear,
+      isoWeek: w.isoWeek,
+      tasks: w.tasks.map((t) => ({
+        title: t.title,
+        details: t.details,
+        completed: t.completed,
+        completedAt: t.completedAt ? t.completedAt.toISOString() : null,
+      })),
+      reflection: {
+        good: w.reflection?.good ?? "",
+        bad: w.reflection?.bad ?? "",
+        consult: w.reflection?.consult ?? "",
+      },
+      previousProgressAdvice: progress?.content.slice(0, PREV_ADVICE_CHARS) ?? null,
+      previousGoalSettingAdvice: goal?.content.slice(0, PREV_ADVICE_CHARS) ?? null,
+    };
+  });
 }
 
 export async function generateFeedback({
@@ -40,47 +91,28 @@ export async function generateFeedback({
       bad: week.reflection?.bad ?? "",
       consult: week.reflection?.consult ?? "",
     };
+    const history = await loadHistory(user.id, {
+      isoYear: week.isoYear,
+      isoWeek: week.isoWeek,
+    });
 
-    let payload: { system: string; prompt: string };
-    if (kind === "progress") {
-      const history: { isoYear: number; isoWeek: number; total: number; done: number }[] = [];
-      for (let i = 1; i <= 4; i++) {
-        const shifted = shiftIsoWeek({ isoYear: week.isoYear, isoWeek: week.isoWeek }, -i);
-        const prev = await prisma.week.findUnique({
-          where: {
-            userId_isoYear_isoWeek: {
-              userId: user.id,
-              isoYear: shifted.isoYear,
-              isoWeek: shifted.isoWeek,
-            },
-          },
-          include: { tasks: true },
-        });
-        if (prev) {
-          history.push({
-            isoYear: prev.isoYear,
-            isoWeek: prev.isoWeek,
-            total: prev.tasks.length,
-            done: prev.tasks.filter((t) => t.completed).length,
+    const payload =
+      kind === "progress"
+        ? buildProgressPrompt({
+            userLabel,
+            isoYear: week.isoYear,
+            isoWeek: week.isoWeek,
+            tasks,
+            reflection,
+            history,
+          })
+        : buildGoalSettingPrompt({
+            userLabel,
+            isoYear: week.isoYear,
+            isoWeek: week.isoWeek,
+            tasks,
+            history,
           });
-        }
-      }
-      payload = buildProgressPrompt({
-        userLabel,
-        isoYear: week.isoYear,
-        isoWeek: week.isoWeek,
-        tasks,
-        reflection,
-        history,
-      });
-    } else {
-      payload = buildGoalSettingPrompt({
-        userLabel,
-        isoYear: week.isoYear,
-        isoWeek: week.isoWeek,
-        tasks,
-      });
-    }
 
     const { content, model } = await callLLM(payload);
     await prisma.feedback.create({
