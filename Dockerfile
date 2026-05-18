@@ -32,12 +32,14 @@ COPY --from=builder /app/.next/static ./.next/static
 #   - prisma/ schema for `prisma migrate deploy` / `db push`
 #   - .prisma/ generated client artifacts
 #   - @prisma/* (client + engines + debug + fetch-engine + get-platform)
-#   - prisma CLI itself
+#   - prisma/ CLI package (entrypoint.sh invokes it via `node <path>/build/index.js`)
+# Note: we intentionally don't copy .bin/prisma because COPY would
+# dereference the symlink and the bundled CLI script would lose the
+# ability to find its sibling WASM assets.
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
 
 # Entrypoint runs migrations then starts the server
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
