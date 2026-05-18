@@ -28,10 +28,14 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Prisma assets needed at runtime
+# Prisma assets needed at runtime:
+#   - prisma/ schema for `prisma migrate deploy` / `db push`
+#   - .prisma/ generated client artifacts
+#   - @prisma/* (client + engines + debug + fetch-engine + get-platform)
+#   - prisma CLI itself
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
 
