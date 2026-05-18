@@ -8,7 +8,7 @@ type ReflectionLite = { good: string; bad: string; consult: string };
 type WeekSummary = { isoYear: number; isoWeek: number; total: number; done: number };
 
 export const SYSTEM_ROLE =
-  "あなたは研究を志す大学院生のメンターです。目標設定能力を養い、モチベーションを高め、研究遂行能力を引き上げるための、温かく具体的なアドバイスを日本語で行ってください。";
+  "あなたは研究室に配属された学部生のメンターです。目標設定能力を養い、モチベーションを高め、研究遂行能力を引き上げるための、温かく具体的なアドバイスを日本語で行ってください。";
 
 function fmtTasks(tasks: TaskLite[]): string {
   if (tasks.length === 0) return "（タスク未設定）";
